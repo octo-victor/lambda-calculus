@@ -2,8 +2,11 @@ PROJECT_NAME = lambda-calculus
 CC = gcc
 
 ifeq ($(BUILD_MODE), DEBUG)
-# 	CFLAGS += -fsanitize=address -g -fno-omit-frame-pointer -O0
-	CFLAGS += -g -O0
+	ifeq ($(ASAN), 1)
+	 	CFLAGS += -fsanitize=address -g -fno-omit-frame-pointer -O0
+	else
+		CFLAGS += -g -O0
+	endif
 else
 	CFLAGS += -s -O1
 endif

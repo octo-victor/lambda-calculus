@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ansi_escapes.h"
 #include "parser.h"
 #include "hashtable.h"
 #include "printing.h"
@@ -14,12 +15,19 @@
 
 #define BUF_LEN 65536
 
+const char *hello_message =
+
+"Lambda Calculus (λ-calculus) abstraction and application interpreter.\n"
+"Made by victorsavas at "
+             ANSI_BLUE "https://github.com/victorsavas/lambda-calculus.\n" ANSI_RESET
+"Type \":help\" for more information.\n";
+
 struct Mode mode = {
         .exit = false,
         .interrupt = false,
-        .reduction_enabled = false,
+        .reduce = false,
         .verbose = false,
-        .depth = 1000
+        .limit = 1000
 };
 
 HashTable *table;
@@ -31,7 +39,7 @@ int main()
         table = hashtable_init();
         char buffer[BUF_LEN];
 
-        hello_message();
+        printf("%s", hello_message);
 
         while (!mode.exit) {
                 signal(SIGINT, interrupt_handle);

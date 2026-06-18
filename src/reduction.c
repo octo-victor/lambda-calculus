@@ -39,7 +39,7 @@ Lambda *lambda_reduce(Lambda *lambda)
 
         bool normal_form;
 
-        if (!mode.reduction_enabled) {
+        if (!mode.reduce) {
                 lambda_print(lambda, NULL);
 
                 normal_form = lambda_normal(lambda);
@@ -56,7 +56,7 @@ Lambda *lambda_reduce(Lambda *lambda)
 
         unsigned int i;
 
-        for (i = 0; i < mode.depth; i++) {
+        for (i = 0; i < mode.limit; i++) {
                 if (mode.interrupt)
                         return NULL;
 
