@@ -13,7 +13,7 @@ struct Stack {
 Stack *stack_init()
 {
         Stack *stack = malloc(sizeof(*stack));
-        void *array = malloc(sizeof(*stack->array) * STACK_CAP);
+        void **array = malloc(sizeof(*stack->array) * STACK_CAP);
 
         if (stack == NULL || array == NULL) {
                 free(stack);
