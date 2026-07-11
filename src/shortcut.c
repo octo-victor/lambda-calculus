@@ -3,6 +3,7 @@
 
 #include "ansi_escapes.h"
 #include "duplicate.h"
+#include "commands.h"
 #include "shortcut.h"
 #include "stack.h"
 
@@ -16,11 +17,14 @@ bool replace_shortcuts(Lambda *lambda, HashTable *table)
         Stack *stack = stack_init();
 
         if (stack == NULL)
-                return false;
+                goto error_exit;
 
         Lambda *top = lambda;
 
         while (top != NULL) {
+                if (mode.interrupt)
+                        goto error_exit;
+
                 switch (top->type) {
                 case LAMBDA_ENTRY:
                         stack_push(stack, top->ent.expression);
@@ -38,14 +42,14 @@ bool replace_shortcuts(Lambda *lambda, HashTable *table)
                                         ANSI_RESET,
                                         shortcut
                                 );
-                                goto error;
+                                goto error_exit;
                         }
 
                         Lambda *duplicate = lambda_duplicate(entry->ent.expression);
 
                         if (duplicate == NULL) {
                                 printf(ANSI_RED "Error. Duplication fail.\n" ANSI_RESET);
-                                goto error;
+                                goto error_exit;
                         }
 
                         *top = *duplicate;
@@ -79,7 +83,7 @@ bool replace_shortcuts(Lambda *lambda, HashTable *table)
                                         ANSI_RESET,
                                         integer
                                 );
-                                goto error;
+                                goto error_exit;
                         }
 
                         *top = *numeral;
@@ -94,7 +98,7 @@ bool replace_shortcuts(Lambda *lambda, HashTable *table)
         stack_free(stack);
         return true;
 
-        error:
+        error_exit:
 
         stack_free(stack);
         return false;
@@ -166,6 +170,15 @@ Lambda *generate_numeral(int integer)
         Lambda *application = outer_application;
 
         for (int k = 0; k < integer; k++) {
+                if (mode.interrupt) {
+                        application->app.left = NULL;
+                        application->app.right = NULL;
+
+                        lambda_free(numeral);
+
+                        return NULL;
+                }
+
                 application->type = LAMBDA_APPLICATION;
 
                 Lambda *left = malloc(sizeof(*left));

@@ -11,7 +11,7 @@ else
 	CFLAGS += -s -O1
 endif
 
-INCLUDE_PATHS = -Isrc
+INCLUDE_PATHS = -Iinclude
 SRC_DIR = src
 OBJ_DIR = obj
 
@@ -31,5 +31,6 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 
 clean:
 	rm -rf obj
+	rm -f lambda-calculus
 
 .PHONY: all clean

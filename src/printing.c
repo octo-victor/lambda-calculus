@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "ansi_escapes.h"
+#include "commands.h"
 #include "printing.h"
 #include "stack.h"
 
@@ -122,6 +123,13 @@ void lambda_print(const Lambda *lambda, const Lambda *redex)
                 }
 
                 top = stack_pop(lambda_stack);
+
+                if (mode.interrupt) {
+                        stack_free(lambda_stack);
+                        stack_free(operator_stack);
+
+                        return;
+                }
 
                 do {
                         operator_top = stack_pop(operator_stack);

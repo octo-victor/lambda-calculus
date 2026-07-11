@@ -1,11 +1,10 @@
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "alpha_rename.h"
 #include "ansi_escapes.h"
+#include "clock.h"
 #include "commands.h"
 #include "duplicate.h"
 #include "printing.h"
@@ -16,9 +15,10 @@
 #define LONG_CYCLE 10000
 
 static Lambda *get_redex(Lambda *lambda);
+static Lambda *get_redex_normal(Lambda *lambda);
+static Lambda *get_redex_eager(Lambda *lambda);
 
 static void beta_reduction(Lambda *redex);
-static void interrupt_handle(int signal);
 
 bool lambda_normal(Lambda *lambda)
 {
@@ -32,8 +32,6 @@ bool lambda_normal(Lambda *lambda)
 
 Lambda *lambda_reduce(Lambda *lambda)
 {
-        signal(SIGINT, interrupt_handle);
- 
         if (lambda == NULL)
                 return NULL;
 
@@ -52,14 +50,13 @@ Lambda *lambda_reduce(Lambda *lambda)
                 return lambda;
         }
 
+        clock_begin();
+
         normal_form = false;
 
         unsigned int i;
 
         for (i = 0; i < mode.limit; i++) {
-                if (mode.interrupt)
-                        return NULL;
-
                 Lambda *redex = get_redex(lambda);
 
                 if (redex == NULL) {
@@ -71,18 +68,24 @@ Lambda *lambda_reduce(Lambda *lambda)
                         printf(ANSI_BLUE "%-5u " ANSI_RESET, i + 1);
                         lambda_print(lambda, redex);
                         printf("\n");
-                        
-                        // getchar();
                 } else if ((i + 1) % LONG_CYCLE == 0) {
-                        printf(".\n");
+                        printf("%d/%d\n", i+1, mode.limit);
                 }
 
                 bool rename = alpha_rename(redex);
 
                 if (!rename)
                         beta_reduction(redex);
+                
+                if (mode.interrupt) {
+                        lambda_free(lambda);
+                        return NULL;
+                }
         }
-        /*
+
+        clock_end();
+
+        double dt_milli = get_dt() * 1e3;
 
         int numeral = lambda_is_numeral(lambda);
 
@@ -90,22 +93,18 @@ Lambda *lambda_reduce(Lambda *lambda)
                 printf("%d", numeral);
         else
                 lambda_print(lambda, NULL);
-        
-        */
-
-        lambda_print(lambda, NULL);
 
         if (normal_form)
-                printf(ANSI_BLUE " (Normal form reached after %d steps.)\n" ANSI_RESET, i);
+                printf(ANSI_BLUE " (Normal form reached after %d iterations. Time: %.3lfms)\n" ANSI_RESET, i, dt_milli);
         else
-                printf(ANSI_BLUE " (Normal form not reached.)\n" ANSI_RESET);
+                printf(ANSI_BLUE " (Normal form not reached after %d iterations. Time: %.3lfms)\n" ANSI_RESET, i, dt_milli);
 
         return lambda;
 }
 
 void beta_reduction(Lambda *redex)
 {
-        if (redex == NULL)
+        if (redex == NULL || mode.interrupt)
                 return;
 
         if (!is_redex(redex))
@@ -124,6 +123,7 @@ void beta_reduction(Lambda *redex)
         struct Variable bound_var = left->abs.bind;
 
         free(left);
+        redex->type = LAMBDA_NOTHING;
 
         Lambda *top = body;
 
@@ -142,6 +142,11 @@ void beta_reduction(Lambda *redex)
                                 break;
 
                         Lambda *dup = lambda_duplicate(argument);
+
+                        if (dup == NULL || mode.interrupt) {
+                                lambda_free(dup);
+                                goto error_exit;
+                        }
 
                         *top = *dup;
                         free(dup);
@@ -173,6 +178,9 @@ void beta_reduction(Lambda *redex)
                 }
 
                 top = (Lambda *)stack_pop(stack);
+
+                if (mode.interrupt)
+                        goto error_exit;
         }
 
         lambda_free(argument);
@@ -180,9 +188,33 @@ void beta_reduction(Lambda *redex)
         free(body);
 
         stack_free(stack);
+
+        return;
+
+        error_exit:
+
+        lambda_free(body);
+        lambda_free(argument);
+        
+        stack_free(stack);
 }
 
 Lambda *get_redex(Lambda *lambda)
+{
+        switch (mode.strat) {
+        case STRAT_NORMAL:
+                return get_redex_normal(lambda);
+                break;
+        
+        case STRAT_EAGER:
+                return get_redex_eager(lambda);
+                break;
+        }
+
+        return NULL;
+}
+
+Lambda *get_redex_normal(Lambda *lambda)
 {
         if (lambda == NULL)
                 return NULL;
@@ -233,6 +265,11 @@ Lambda *get_redex(Lambda *lambda)
                 }
 
                 top = (Lambda *)stack_pop(stack);
+
+                if (mode.interrupt) {
+                        stack_free(stack);
+                        return NULL;
+                }
         }
 
         stack_free(stack);
@@ -240,13 +277,66 @@ Lambda *get_redex(Lambda *lambda)
         return NULL;
 }
 
-void interrupt_handle(int signal)
+Lambda *get_redex_eager(Lambda *lambda)
 {
-        mode.interrupt = true;
+        if (lambda == NULL)
+                return NULL;
 
-        printf(
-                ANSI_RED
-                "Killed.\n"
-                ANSI_RESET
-        );
+        Stack *stack = stack_init();
+
+        if (stack == NULL)
+                return NULL;
+
+        Lambda *redex = NULL;
+        Lambda *top = lambda;
+
+        while (top != NULL) {
+                switch (top->type) {
+                case LAMBDA_ENTRY:
+                        Lambda *entry = top->ent.expression;
+                        stack_push(stack, entry);
+
+                        break;
+
+                case LAMBDA_SHORTCUT:
+                        break;
+
+                case LAMBDA_VARIABLE:
+                        break;
+                        
+                case LAMBDA_ABSTRACTION:
+                        Lambda *body = top->abs.body;
+                        stack_push(stack, body);
+
+                        break;
+
+                case LAMBDA_APPLICATION:
+                        if (is_redex(top)) {
+                                redex = top;
+                                stack_clear(stack);
+                        }
+
+                        Lambda *right = top->app.right;
+                        Lambda *left = top->app.left;
+
+                        stack_push(stack, right);
+                        stack_push(stack, left);
+
+                        break;
+
+                case LAMBDA_NUMERAL:
+                        break;
+                }
+
+                top = (Lambda *)stack_pop(stack);
+                
+                if (mode.interrupt) {
+                        stack_free(stack);
+                        return NULL;
+                }
+        }
+
+        stack_free(stack);
+
+        return redex;
 }

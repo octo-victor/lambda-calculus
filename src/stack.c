@@ -13,17 +13,15 @@ struct Stack {
 Stack *stack_init()
 {
         Stack *stack = malloc(sizeof(*stack));
+        void *array = malloc(sizeof(*stack->array) * STACK_CAP);
 
-        if (stack == NULL)
-                return NULL;
-
-        stack->array = malloc(sizeof(*stack->array) * STACK_CAP);
-
-        if (stack->array == NULL) {
+        if (stack == NULL || array == NULL) {
                 free(stack);
+                free(array);
                 return NULL;
         }
 
+        stack->array = array;
         stack->top = 0;
         stack->capacity = STACK_CAP;
 
@@ -41,7 +39,7 @@ void stack_free(Stack *stack)
 
 const void *stack_push(Stack *stack, const void *address)
 {
-        if (stack == NULL)
+        if (stack == NULL || address == NULL)
                 return NULL;
 
         if (stack->top + 1 == stack->capacity) {
@@ -61,10 +59,7 @@ const void *stack_push(Stack *stack, const void *address)
 
 const void *stack_pop(Stack *stack)
 {
-        if (stack == NULL)
-                return NULL;
-
-        if (stack->top == 0)
+        if (stack == NULL || stack->top == 0)
                 return NULL;
 
         return stack->array[--stack->top];
@@ -72,10 +67,7 @@ const void *stack_pop(Stack *stack)
 
 const void *stack_peek(Stack *stack)
 {
-        if (stack == NULL)
-                return NULL;
-
-        if (stack->top == 0)
+        if (stack == NULL || stack->top == 0)
                 return NULL;
 
         return stack->array[stack->top - 1];
@@ -84,7 +76,7 @@ const void *stack_peek(Stack *stack)
 const void *stack_search(Stack *stack, const void *address,
                          bool compare(const void *left, const void *right))
 {
-        if (stack == NULL)
+        if (stack == NULL || address == NULL)
                 return NULL;
 
         for (size_t i = 0; i < stack->top; i++) {

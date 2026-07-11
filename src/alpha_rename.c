@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "alpha_rename.h"
+#include "commands.h"
 #include "duplicate.h"
 #include "stack.h"
 
@@ -14,15 +15,14 @@ static const size_t *push_height(Stack *stack, size_t i);
 
 bool alpha_rename(Lambda *redex)
 {
-        if (!is_redex(redex))
+        if (!is_redex(redex) || mode.interrupt)
                 return NULL;
 
         Lambda *right = redex->app.right;
 
         Stack *right_fv = get_free_variables(right);
 
-        if (right_fv == NULL
-         || stack_peek(right_fv) == NULL) {
+        if (right_fv == NULL || stack_peek(right_fv) == NULL) {
                 stack_free(right_fv);
                 return NULL;
         }
@@ -40,15 +40,8 @@ bool capture_check(Lambda *redex, Stack *right_fv)
         Stack *height = stack_init();
         Stack *binds = stack_init();
 
-        if (stack == NULL
-         || height == NULL
-         || binds == NULL) {
-                stack_free(stack);
-                stack_free(height);
-                stack_free(binds);
-
-                return false;
-        }
+        if (stack == NULL || height == NULL || binds == NULL || mode.interrupt)
+                goto error_exit;
 
         bool rename = false;
         Lambda *top = redex->app.left;
@@ -81,6 +74,10 @@ bool capture_check(Lambda *redex, Stack *right_fv)
 
                         if (capture) {
                                 rename_abstraction(top, right_fv, binds);
+
+                                if (mode.interrupt)
+                                        goto error_exit;
+
                                 rename = true;
                         }
 
@@ -99,6 +96,9 @@ bool capture_check(Lambda *redex, Stack *right_fv)
                 }
 
                 top = (Lambda *)stack_pop(stack);
+
+                if (mode.interrupt)
+                        goto error_exit;
         }
 
         size_t *p;
@@ -113,12 +113,24 @@ bool capture_check(Lambda *redex, Stack *right_fv)
         stack_free(binds);
 
         return rename;
+
+        error_exit:
+
+        do {
+                p = (size_t *)stack_pop(height);
+                free(p);
+        } while (p != NULL);
+        
+        stack_free(stack);
+        stack_free(height);
+        stack_free(binds);
+
+        return false;
 }
 
 void rename_abstraction(Lambda *abst, Stack *right_fv, Stack *binds)
 {
-        if (abst == NULL
-         || abst->type != LAMBDA_ABSTRACTION)
+        if (abst == NULL || abst->type != LAMBDA_ABSTRACTION || mode.interrupt)
                 return;
 
         struct Variable *old_bind = &abst->abs.bind;
@@ -127,16 +139,15 @@ void rename_abstraction(Lambda *abst, Stack *right_fv, Stack *binds)
         Stack *stack = stack_init();
         Stack *inner_binds = get_inner_binds(abst);
 
-        if (stack == NULL
-         || inner_binds == NULL) {
-                stack_free(stack);
-                stack_free(inner_binds);
-                return;
-        }
+        if (stack == NULL || inner_binds == NULL)
+                goto error_exit;
 
         struct Variable new_bind = *old_bind;
 
         for (int i = -1; i < SUBSCRIPT_LIMIT; i++) {
+                if (mode.interrupt)
+                        goto error_exit;
+
                 new_bind.subscript = i;
 
                 if (!stack_search(right_fv, &new_bind, variable_search)
@@ -146,6 +157,7 @@ void rename_abstraction(Lambda *abst, Stack *right_fv, Stack *binds)
         }
 
         stack_free(inner_binds);
+        inner_binds = NULL;
 
         if (new_bind.subscript == SUBSCRIPT_LIMIT) {
                 stack_free(stack);
@@ -157,7 +169,6 @@ void rename_abstraction(Lambda *abst, Stack *right_fv, Stack *binds)
         while (top != NULL) {
                 switch (top->type) {
                 case LAMBDA_ENTRY:
-                        // illegal
                         break;
 
                 case LAMBDA_SHORTCUT:
@@ -186,23 +197,37 @@ void rename_abstraction(Lambda *abst, Stack *right_fv, Stack *binds)
                 }
 
                 top = (Lambda *)stack_pop(stack);
+
+                if (mode.interrupt)
+                        goto error_exit;
         }
 
         abst->abs.bind = new_bind;
 
         stack_free(stack);
+
+        return;
+
+        error_exit:
+
+        stack_free(stack);
+        stack_free(inner_binds);
+
+        return;
 }
 
 Stack *get_inner_binds(Lambda *abst)
 {
-        if (abst == NULL
-         || abst->type != LAMBDA_ABSTRACTION)
+        if (abst == NULL || abst->type != LAMBDA_ABSTRACTION || mode.interrupt)
                 return NULL;
 
         struct Variable old_bind = abst->abs.bind;
 
         Stack *stack = stack_init();
         Stack *inner_binds = stack_init();
+
+        if (stack == NULL || inner_binds == NULL)
+                goto error_exit;
 
         Lambda *top = abst->abs.body;
 
@@ -246,16 +271,26 @@ Stack *get_inner_binds(Lambda *abst)
                 }
 
                 top = (Lambda *)stack_pop(stack);
+
+                if (mode.interrupt)
+                        goto error_exit;
         }
         
         stack_free(stack);
 
         return inner_binds;
+
+        error_exit:
+
+        stack_free(stack);
+        stack_free(inner_binds);
+
+        return NULL;
 }
 
 Stack *get_free_variables(Lambda *lambda)
 {
-        if (lambda == NULL)
+        if (lambda == NULL || mode.interrupt)
                 return NULL;
 
         Stack *stack = stack_init();
@@ -264,17 +299,8 @@ Stack *get_free_variables(Lambda *lambda)
         Stack *free_variables = stack_init();
         Stack *binds = stack_init();
 
-        if (stack == NULL
-         || height == NULL
-         || free_variables == NULL
-         || binds == NULL) {
-                stack_free(stack);
-                stack_free(height);
-                stack_free(free_variables);
-                stack_free(binds);
-
-                return NULL;
-        }
+        if (stack == NULL || height == NULL || free_variables == NULL || binds == NULL)
+                goto error_exit;
         
         Lambda *top = lambda;
 
@@ -328,6 +354,9 @@ Stack *get_free_variables(Lambda *lambda)
                 }
 
                 top = (Lambda *)stack_pop(stack);
+
+                if (mode.interrupt)
+                        goto error_exit;
         }
 
         stack_free(stack);
@@ -343,11 +372,25 @@ Stack *get_free_variables(Lambda *lambda)
         stack_free(binds);
 
         return free_variables;
+
+        error_exit:
+
+        do {
+                p = (size_t *)stack_pop(height);
+                free(p);
+        } while (p != NULL);
+
+        stack_free(stack);
+        stack_free(height);
+        stack_free(free_variables);
+        stack_free(binds);
+
+        return NULL;
 }
 
 const size_t *push_height(Stack *stack, size_t height)
 {
-        if (stack == NULL)
+        if (stack == NULL || mode.interrupt)
                 return NULL;
 
         size_t *mem = malloc(sizeof(*mem));
@@ -359,7 +402,7 @@ const size_t *push_height(Stack *stack, size_t height)
 
 bool is_redex(Lambda *lambda)
 {
-        if (lambda == NULL)
+        if (lambda == NULL || mode.interrupt)
                 return false;
 
         if (lambda->type != LAMBDA_APPLICATION)

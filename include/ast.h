@@ -3,6 +3,7 @@
 #include "variable.h"
 
 typedef enum LambdaExprType {
+        LAMBDA_NOTHING=0,
         LAMBDA_VARIABLE,
         LAMBDA_ABSTRACTION,
         LAMBDA_APPLICATION,

@@ -15,38 +15,40 @@
 
 #define BUF_LEN 65536
 
+void handle(int signal);
+
 const char *hello_message =
 
 "Lambda Calculus (λ-calculus) abstraction and application interpreter.\n"
-"Made by victorsavas at "
-             ANSI_BLUE "https://github.com/victorsavas/lambda-calculus.\n" ANSI_RESET
+"Made by octo-victor at "
+             ANSI_BLUE "https://github.com/octo-victor/lambda-calculus.\n" ANSI_RESET
 "Type \":help\" for more information.\n";
 
 struct Mode mode = {
         .exit = false,
         .interrupt = false,
         .reduce = false,
+        .strat = STRAT_NORMAL,
         .verbose = false,
         .limit = 1000
 };
 
-HashTable *table;
-
-static void interrupt_handle(int signal);
-
 int main()
 {
-        table = hashtable_init();
+        signal(SIGINT, handle);
+        
+        HashTable *table = hashtable_init();
         char buffer[BUF_LEN];
 
         printf("%s", hello_message);
 
         while (!mode.exit) {
-                signal(SIGINT, interrupt_handle);
-
                 printf("λ> ");
 
                 fgets(buffer, BUF_LEN, stdin);
+
+                if (mode.interrupt)
+                        break;
                 
                 if (buffer[0] == ':') {
                         parse_command(buffer, table);
@@ -55,6 +57,7 @@ int main()
 
                 Lambda *lambda;
                 lambda = lambda_parse(buffer);
+
 
                 if (lambda == NULL)
                         continue;
@@ -66,12 +69,21 @@ int main()
                         continue;
                 }
                 
-                lambda_reduce(lambda);
+                if (mode.interrupt) {
+                        printf("interrupt: true");
+                }
 
-                mode.interrupt = false;
+                lambda = lambda_reduce(lambda);
 
                 if (!hashtable_insert(table, lambda))
                         lambda_free(lambda);
+
+                if (mode.interrupt) {
+                        mode.interrupt = false;
+                        signal(SIGINT, handle);
+                }
+
+                buffer[0] = '\0';
         }
 
         printf("Exiting.\n");
@@ -81,10 +93,13 @@ int main()
         return 0;
 }
 
-void interrupt_handle(int signal)
+void handle(int signal)
 {
-        printf("\nExiting.\n");
-        hashtable_free(table);
+        mode.interrupt = true;
 
-        exit(1);
+        printf(
+                ANSI_RED
+                "Killed.\n"
+                ANSI_RESET
+        );
 }

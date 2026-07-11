@@ -20,12 +20,13 @@ ANSI_RESET "\n"
 "  :entries                             Prints out all the shortcuts stored\n"
 "  :exit                                Terminates the program\n"
 "  :help                                Prints this message\n"
-"  :noreduce.                           Disables reduction (on by default)\n"
-"  :normal                              Enables reduction\n"
+"  :noreduce                            Disables reduction (on by default)\n"
+"  :normal                              Enables reduction with normal strategy (outmost-leftmost)\n"
+"  :eager                               Enables reduction with eager strategy (innermost-leftmost)\n"
 "  :noverbose                           Disables step-by-step printing\n"
 "  :remove <entry>                      Deletes one entry from the hashtable\n"
 "  :setlimit <limit>                    Sets reduction limit\n"
-"  :verbose                             Enables verbose reduction\n"
+"  :verbose                             Prints reduction steps\n"
 "\n"
 "Syntax:\n"
 "  expression -> variable\n"
@@ -75,6 +76,12 @@ void parse_command(char *str, HashTable *table)
                 command_remove(table);
         } else if (strcmp(token, ":normal") == 0) {
                 mode.reduce = true;
+                mode.strat = STRAT_NORMAL;
+                if (mode.limit == 0)
+                        mode.limit = 1000;
+        } else if (strcmp(token, ":eager") == 0) {
+                mode.reduce = true;
+                mode.strat = STRAT_EAGER;
                 if (mode.limit == 0)
                         mode.limit = 1000;
         }

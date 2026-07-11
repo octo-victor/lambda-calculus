@@ -28,9 +28,6 @@ void lambda_free(Lambda *lambda)
                         free(top->shortcut);
                         break;
 
-                case LAMBDA_VARIABLE:
-                        break;
-
                 case LAMBDA_ABSTRACTION:
                         stack_push(stack, top->abs.body);
                         break;
@@ -40,6 +37,8 @@ void lambda_free(Lambda *lambda)
                         stack_push(stack, top->app.left);
                         break;
                 
+                case LAMBDA_NOTHING:
+                case LAMBDA_VARIABLE:
                 case LAMBDA_NUMERAL:
                         break;
                 }

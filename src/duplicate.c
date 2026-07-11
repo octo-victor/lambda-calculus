@@ -1,12 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "commands.h"
 #include "duplicate.h"
 #include "stack.h"
 
 Lambda *lambda_duplicate(const Lambda *lambda)
 {
-        if (lambda == NULL)
+        if (lambda == NULL || mode.interrupt)
                 return NULL;
 
         Stack *src_stack = stack_init();
@@ -14,12 +15,8 @@ Lambda *lambda_duplicate(const Lambda *lambda)
 
         Lambda *dup = calloc(1, sizeof(*dup));
 
-        if (src_stack == NULL || dest_stack == NULL || dup == NULL) {
-                stack_free(src_stack);
-                stack_free(dest_stack);
-                free(dup);
-                return NULL;
-        }
+        if (src_stack == NULL || dest_stack == NULL || dup == NULL)
+                goto error_exit;
 
         Lambda *src_top = (Lambda *)lambda;
         Lambda *dest_top = dup;
@@ -36,6 +33,9 @@ Lambda *lambda_duplicate(const Lambda *lambda)
 
                         dest_top->ent.entry = my_strdup(src_top->ent.entry);
                         dest_top->ent.expression = right;
+
+                        if (right == NULL)
+                                goto error_exit;
 
                         stack_push(src_stack, src_top->ent.expression);
                         stack_push(dest_stack, right);
@@ -56,17 +56,23 @@ Lambda *lambda_duplicate(const Lambda *lambda)
                         dest_top->abs.bind = src_top->abs.bind;
                         dest_top->abs.body = right;
 
+                        if (right == NULL)
+                                goto error_exit;
+
                         stack_push(src_stack, src_top->abs.body);
                         stack_push(dest_stack, right);
 
                         break;
 
                 case LAMBDA_APPLICATION:
-                        right = malloc(sizeof(*right));
-                        left = malloc(sizeof(*left));
+                        right = calloc(1, sizeof(*right));
+                        left = calloc(1, sizeof(*left));
 
                         dest_top->app.right = right;
                         dest_top->app.left = left;
+
+                        if (right == NULL || left == NULL)
+                                goto error_exit;
 
                         stack_push(src_stack, src_top->app.right);
                         stack_push(src_stack, src_top->app.left);
@@ -83,12 +89,23 @@ Lambda *lambda_duplicate(const Lambda *lambda)
 
                 src_top = (Lambda *)stack_pop(src_stack);
                 dest_top = (Lambda *)stack_pop(dest_stack);
+
+                if (mode.interrupt)
+                        goto error_exit;
         }
 
         stack_free(src_stack);
         stack_free(dest_stack);
 
         return dup;
+
+        error_exit:
+
+        stack_free(src_stack);
+        stack_free(dest_stack);
+        lambda_free(dup);
+        
+        return NULL;
 }
 
 char *my_strdup(char *str)
