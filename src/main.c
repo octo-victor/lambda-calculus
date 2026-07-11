@@ -69,10 +69,6 @@ int main()
                         continue;
                 }
                 
-                if (mode.interrupt) {
-                        printf("interrupt: true");
-                }
-
                 lambda = lambda_reduce(lambda);
 
                 if (!hashtable_insert(table, lambda))

@@ -88,6 +88,11 @@ Lambda *lambda_reduce(Lambda *lambda)
         double dt_milli = get_dt() * 1e3;
 
         int numeral = lambda_is_numeral(lambda);
+                
+        if (mode.interrupt) {
+                lambda_free(lambda);
+                return NULL;
+        }
 
         if (numeral != -1)
                 printf("%d", numeral);
