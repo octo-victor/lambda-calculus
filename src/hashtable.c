@@ -201,7 +201,7 @@ void hashtable_print(HashTable *table)
 
                 printf("%-8s " ANSI_GREEN, shortcut);
 
-                lambda_print(term, NULL);
+                lambda_print(NULL, term, NULL, false);
                 printf(ANSI_RESET "\n");
         }
         
@@ -362,4 +362,51 @@ void nodes_free(Node *node)
 
                 node = next;
         }
+}
+
+bool lambda_print_simple(const HashTable *table, const Lambda *lambda)
+{
+        if (table == NULL || lambda == NULL)
+                return false;
+
+        bool success = false;
+
+        int numeral = lambda_is_numeral(lambda);
+
+        if (numeral != -1) {
+                printf("%d", numeral);
+                success = true;
+        }
+
+        size_t entries_count = table->entries_count;
+
+        if (entries_count == 0)
+                return success;
+
+        size_t i = 0;
+
+        for (size_t j = 0; j < BUCKET_COUNT && i < entries_count; j++) {
+                const Node *node = &table->buckets[j];
+
+                if (node->value == NULL)
+                        continue;
+
+                while (node != NULL) {
+                        char *entry = node->value->ent.entry;
+                        Lambda *expression = node->value->ent.expression;
+
+                        bool compare = lambda_compare(lambda, expression);
+
+                        if (compare && !success)
+                                printf("%s", entry);
+                        else if (compare && success)
+                                printf(", %s", entry);
+
+                        success = compare || success;
+
+                        node = node->next;
+                }
+        }
+
+        return success;
 }

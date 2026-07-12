@@ -12,9 +12,11 @@ const void *stack_push(Stack *stack, const void *address);
 const void *stack_pop(Stack *stack);
 
 const void *stack_peek(Stack *stack);
-const size_t stack_height(Stack *stack);
+size_t stack_height(Stack *stack);
 
 void stack_clear(Stack *stack);
 
 const void *stack_search(Stack *stack, const void *address,
+                         bool compare(const void *left, const void *right));
+size_t stack_index(Stack *stack, const void *address,
                          bool compare(const void *left, const void *right));

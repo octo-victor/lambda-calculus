@@ -3,6 +3,7 @@
 
 #include "ansi_escapes.h"
 #include "commands.h"
+#include "hashtable.h"
 #include "printing.h"
 #include "stack.h"
 
@@ -32,10 +33,15 @@ const char *operator_table[] = {
         ANSI_RESET
 };
 
-void lambda_print(const Lambda *lambda, const Lambda *redex)
+void lambda_print(const HashTable *table, const Lambda *lambda,
+                  const Lambda *redex, bool simplify)
 {
         if (lambda == NULL)
                 return;
+
+        if (simplify)
+                if (lambda_print_simple(table, lambda))
+                        return;
 
         Stack *lambda_stack = stack_init();
         Stack *operator_stack = stack_init();

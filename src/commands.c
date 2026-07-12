@@ -14,18 +14,21 @@ const char *help_message =
 
 "Lambda Calculus (λ-calculus) abstraction and application interpreter.\n"
 "Made by victorsavas at "
-             ANSI_BLUE "https://github.com/victorsavas/lambda-calculus.\n"
+             ANSI_BLUE "https://github.com/octo-victor/lambda-calculus.\n"
 ANSI_RESET "\n"
 "Command list:\n"
+"  :clear                               Clears the screen\n"
+"  :eager                               Enables reduction with eager strategy (innermost-leftmost)\n"
 "  :entries                             Prints out all the shortcuts stored\n"
 "  :exit                                Terminates the program\n"
 "  :help                                Prints this message\n"
-"  :noreduce                            Disables reduction (on by default)\n"
+"  :noreduction                         Disables reduction (on by default)\n"
 "  :normal                              Enables reduction with normal strategy (outmost-leftmost)\n"
-"  :eager                               Enables reduction with eager strategy (innermost-leftmost)\n"
 "  :noverbose                           Disables step-by-step printing\n"
 "  :remove <entry>                      Deletes one entry from the hashtable\n"
 "  :setlimit <limit>                    Sets reduction limit\n"
+"  :simple                              Simplifies output printing\n"
+"  :sparse                              Prints the full syntax of the output\n"
 "  :verbose                             Prints reduction steps\n"
 "\n"
 "Syntax:\n"
@@ -93,6 +96,12 @@ void parse_command(char *str, HashTable *table)
                 mode.verbose = false;
         } else if (strcmp(token, ":setlimit") == 0) {
                 set_limit();
+        } else if (strcmp(token, ":clear") == 0) {
+                printf(ANSI_CLEAR);
+        } else if (strcmp(token, ":simple") == 0) {
+                mode.simple_print = true;
+        } else if (strcmp(token, ":sparse") == 0) {
+                mode.simple_print = false;
         } else {
                 printf(
                         ANSI_RED
@@ -109,7 +118,7 @@ void command_remove(HashTable *table)
         char *token = strtok(NULL, space);
 
         if (token == NULL) {
-                printf(":remove [ENTRY]\n");
+                printf(":remove <entry>\n");
                 return;
         }
 
@@ -130,7 +139,7 @@ void set_limit()
                         ANSI_RED
                         "Syntax error. Expected positive integer.\n"
                         ANSI_RESET
-                        ":setlimit [integer]\n"
+                        ":setlimit <limit>\n"
                 );
                 return;
         }

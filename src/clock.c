@@ -51,7 +51,7 @@ void clock_end() {
 }
 
 double get_dt() {
-    return (end - begin) / (double) CLOCKS_PER_SEC;
+    return ((double)(end - begin)) / (double) CLOCKS_PER_SEC;
 }
 
 #endif

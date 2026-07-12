@@ -233,13 +233,6 @@ Stack *get_inner_binds(Lambda *abst)
 
         while (top != NULL) {
                 switch (top->type) {
-                case LAMBDA_ENTRY:
-                        // illegal
-                        break;
-
-                case LAMBDA_SHORTCUT:
-                        break;
-
                 case LAMBDA_VARIABLE:
                         struct Variable *var = &top->variable;
 
@@ -266,7 +259,10 @@ Stack *get_inner_binds(Lambda *abst)
                         
                         break;
 
+                case LAMBDA_ENTRY:
+                case LAMBDA_SHORTCUT:
                 case LAMBDA_NUMERAL:
+                        // illegal
                         break;
                 }
 

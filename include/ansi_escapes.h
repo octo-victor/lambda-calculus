@@ -5,3 +5,4 @@
 #define ANSI_GREEN          "\x1B[32m"
 #define ANSI_BLUE           "\x1B[34m"
 #define ANSI_RESET          "\x1B[0m"
+#define ANSI_CLEAR          "\e[1;1H\e[2J"

@@ -12,3 +12,4 @@ Lambda *hashtable_search(HashTable *table, const char *key);
 Lambda *hashtable_delete(HashTable *table, const char *key);
 
 void hashtable_print(HashTable *table);
+bool lambda_print_simple(const HashTable *table, const Lambda *lambda);

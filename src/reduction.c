@@ -7,6 +7,7 @@
 #include "clock.h"
 #include "commands.h"
 #include "duplicate.h"
+#include "hashtable.h"
 #include "printing.h"
 #include "reduction.h"
 #include "stack.h"
@@ -30,31 +31,15 @@ bool lambda_normal(Lambda *lambda)
         return redex == NULL;
 }
 
-Lambda *lambda_reduce(Lambda *lambda)
+struct ReductionData lambda_reduce(Lambda *lambda)
 {
         if (lambda == NULL)
-                return NULL;
-
-        bool normal_form;
-
-        if (!mode.reduce) {
-                lambda_print(lambda, NULL);
-
-                normal_form = lambda_normal(lambda);
-
-                if (normal_form)
-                        printf(ANSI_BLUE " (Normal form.)\n" ANSI_RESET);
-                else
-                        printf("\n");
-
-                return lambda;
-        }
+                goto error_exit;
 
         clock_begin();
 
-        normal_form = false;
-
         unsigned int i;
+        bool normal_form = false;
 
         for (i = 0; i < mode.limit; i++) {
                 Lambda *redex = get_redex(lambda);
@@ -66,7 +51,7 @@ Lambda *lambda_reduce(Lambda *lambda)
 
                 if (mode.verbose) {
                         printf(ANSI_BLUE "%-5u " ANSI_RESET, i + 1);
-                        lambda_print(lambda, redex);
+                        lambda_print(NULL, lambda, redex, false);
                         printf("\n");
                 } else if ((i + 1) % LONG_CYCLE == 0) {
                         printf("%d/%d\n", i+1, mode.limit);
@@ -77,34 +62,33 @@ Lambda *lambda_reduce(Lambda *lambda)
                 if (!rename)
                         beta_reduction(redex);
                 
-                if (mode.interrupt) {
-                        lambda_free(lambda);
-                        return NULL;
-                }
+                if (mode.interrupt)
+                        goto error_exit;
         }
 
         clock_end();
 
         double dt_milli = get_dt() * 1e3;
 
-        int numeral = lambda_is_numeral(lambda);
-                
-        if (mode.interrupt) {
-                lambda_free(lambda);
-                return NULL;
-        }
+        struct ReductionData data = {
+                .lambda = lambda,
+                .dt_milli = dt_milli,
+                .normal_form = normal_form,
+                .steps = i,
+                .error = false
+        };
 
-        if (numeral != -1)
-                printf("%d", numeral);
-        else
-                lambda_print(lambda, NULL);
+        return data;
 
-        if (normal_form)
-                printf(ANSI_BLUE " (Normal form reached after %d iterations. Time: %.3lfms)\n" ANSI_RESET, i, dt_milli);
-        else
-                printf(ANSI_BLUE " (Normal form not reached after %d iterations. Time: %.3lfms)\n" ANSI_RESET, i, dt_milli);
+        error_exit:
 
-        return lambda;
+        return (struct ReductionData){
+                .lambda = NULL,
+                .normal_form = false,
+                .dt_milli = 0.0,
+                .steps = 0,
+                .error = true
+        };
 }
 
 void beta_reduction(Lambda *redex)

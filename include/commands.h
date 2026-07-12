@@ -14,6 +14,7 @@ struct Mode {
         bool verbose;
         int limit;
         RedStrategy strat;
+        bool simple_print;
 };
 
 extern struct Mode mode;

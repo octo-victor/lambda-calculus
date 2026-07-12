@@ -16,12 +16,14 @@
 #define BUF_LEN 65536
 
 void handle(int signal);
+void print_reduction_data(struct ReductionData data);
 
 const char *hello_message =
 
 "Lambda Calculus (λ-calculus) abstraction and application interpreter.\n"
 "Made by octo-victor at "
-             ANSI_BLUE "https://github.com/octo-victor/lambda-calculus.\n" ANSI_RESET
+             ANSI_BLUE "https://github.com/octo-victor/lambda-calculus" ANSI_RESET
+                                                                     ".\n"
 "Type \":help\" for more information.\n";
 
 struct Mode mode = {
@@ -30,7 +32,8 @@ struct Mode mode = {
         .reduce = false,
         .strat = STRAT_NORMAL,
         .verbose = false,
-        .limit = 1000
+        .limit = 1000,
+        .simple_print = true
 };
 
 int main()
@@ -58,7 +61,6 @@ int main()
                 Lambda *lambda;
                 lambda = lambda_parse(buffer);
 
-
                 if (lambda == NULL)
                         continue;
 
@@ -69,7 +71,24 @@ int main()
                         continue;
                 }
                 
-                lambda = lambda_reduce(lambda);
+                if (mode.reduce) {
+                        struct ReductionData data = lambda_reduce(lambda);
+
+                        if (data.error) {
+                                lambda_free(lambda);
+                                lambda = NULL;
+                        } else {
+                                lambda_print(table, lambda, NULL, mode.simple_print);
+                                print_reduction_data(data);
+                        }
+                } else {
+                        lambda_print(table, lambda, NULL, mode.simple_print);
+
+                        if (lambda_normal(lambda))
+                                printf(ANSI_BLUE " (Normal form.)\n" ANSI_RESET);
+                        else
+                                printf("\n");
+                }
 
                 if (!hashtable_insert(table, lambda))
                         lambda_free(lambda);
@@ -98,4 +117,16 @@ void handle(int signal)
                 "Killed.\n"
                 ANSI_RESET
         );
+}
+
+void print_reduction_data(struct ReductionData data)
+{
+        bool normal_form = data.normal_form;
+        double dt_milli = data.dt_milli;
+        unsigned int i = data.steps;
+
+        if (normal_form)
+                printf(ANSI_BLUE " (Normal form reached after %d iterations and %.3lfms)\n" ANSI_RESET, i, dt_milli);
+        else
+                printf(ANSI_BLUE " (Normal form not reached after %d iterations and %.3lfms)\n" ANSI_RESET, i, dt_milli);
 }

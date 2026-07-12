@@ -42,4 +42,5 @@ struct Lambda {
 };
 
 void lambda_free(Lambda *lambda);
-int lambda_is_numeral(Lambda *lambda);
+int lambda_is_numeral(const Lambda *lambda);
+const Lambda *lambda_compare(const Lambda *left, const Lambda *right);

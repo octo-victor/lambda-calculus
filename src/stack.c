@@ -79,8 +79,8 @@ const void *stack_search(Stack *stack, const void *address,
         if (stack == NULL || address == NULL)
                 return NULL;
 
-        for (size_t i = 0; i < stack->top; i++) {
-                const void *entry = stack->array[i];
+        for (size_t i = stack->top; i > 0; i--) {
+                const void *entry = stack->array[i - 1];
 
                 if (compare(address, entry))
                         return entry;
@@ -89,12 +89,32 @@ const void *stack_search(Stack *stack, const void *address,
         return NULL;
 }
 
+size_t stack_index(Stack *stack, const void *address,
+                   bool compare(const void *left, const void *right))
+{
+        if (stack == NULL || address == NULL)
+                return 0;
+
+        for (size_t i = stack->top; i > 0; i--) {
+                const void *entry = stack->array[i - 1];
+
+                if (compare(address, entry))
+                        return i;
+        }
+
+        return 0;
+}
+
 void stack_clear(Stack *stack)
 {
-        stack->top = 0;
+        if (stack != NULL)
+                stack->top = 0;
 }
 
 size_t stack_height(Stack *stack)
 {
-        return stack->top;
+        if (stack == NULL)
+                return 0;
+
+        return stack->top + 1;
 }

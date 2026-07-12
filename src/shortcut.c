@@ -22,9 +22,6 @@ bool replace_shortcuts(Lambda *lambda, HashTable *table)
         Lambda *top = lambda;
 
         while (top != NULL) {
-                if (mode.interrupt)
-                        goto error_exit;
-
                 switch (top->type) {
                 case LAMBDA_ENTRY:
                         stack_push(stack, top->ent.expression);
@@ -76,15 +73,8 @@ bool replace_shortcuts(Lambda *lambda, HashTable *table)
                         int integer = top->numeral;
                         Lambda *numeral = generate_numeral(integer);
                         
-                        if (numeral == NULL) {
-                                printf(
-                                        ANSI_RED
-                                        "Error. Failed to generate \"%d\" numeral.\n"
-                                        ANSI_RESET,
-                                        integer
-                                );
+                        if (numeral == NULL || mode.interrupt)
                                 goto error_exit;
-                        }
 
                         *top = *numeral;
                         free(numeral);
@@ -93,6 +83,9 @@ bool replace_shortcuts(Lambda *lambda, HashTable *table)
                 }
 
                 top = (Lambda *)stack_pop(stack);
+
+                if (mode.interrupt)
+                        goto error_exit;
         }
 
         stack_free(stack);
@@ -106,6 +99,9 @@ bool replace_shortcuts(Lambda *lambda, HashTable *table)
 
 Lambda *generate_numeral(int integer)
 {
+        if (mode.interrupt)
+                return NULL;
+
         struct Variable var_f = {
                 .letter = 'f',
                 .subscript = -1
@@ -119,7 +115,7 @@ Lambda *generate_numeral(int integer)
         if (integer < 0)
                 return NULL;
 
-        Lambda *numeral = malloc(sizeof(*numeral));
+        Lambda *numeral = calloc(1, sizeof(*numeral));
 
         if (numeral == NULL)
                 return NULL;
@@ -127,7 +123,7 @@ Lambda *generate_numeral(int integer)
         numeral->type = LAMBDA_ABSTRACTION;
         numeral->abs.bind = var_f;
         
-        Lambda *inner_abstraction = malloc(sizeof(*inner_abstraction));
+        Lambda *inner_abstraction = calloc(1, sizeof(*inner_abstraction));
 
         if (inner_abstraction == NULL) {
                 free(numeral);
@@ -143,7 +139,7 @@ Lambda *generate_numeral(int integer)
 
         // Particular case without function application 0=\f.\x.x
         if (integer == 0) {
-                right = malloc(sizeof(*right));
+                right = calloc(1, sizeof(*right));
 
                 inner_abstraction->abs.body = right;
 
@@ -159,7 +155,7 @@ Lambda *generate_numeral(int integer)
         }
 
         // Generate a chain of applications of the form \f.\x.f(f(...(fx)...))
-        Lambda *outer_application = malloc(sizeof(*outer_application));
+        Lambda *outer_application = calloc(1, sizeof(*outer_application));
         inner_abstraction->abs.body = outer_application;
 
         if (outer_application == NULL){
@@ -170,24 +166,15 @@ Lambda *generate_numeral(int integer)
         Lambda *application = outer_application;
 
         for (int k = 0; k < integer; k++) {
-                if (mode.interrupt) {
-                        application->app.left = NULL;
-                        application->app.right = NULL;
-
-                        lambda_free(numeral);
-
-                        return NULL;
-                }
-
                 application->type = LAMBDA_APPLICATION;
 
-                Lambda *left = malloc(sizeof(*left));
-                right = malloc(sizeof(*right));
+                Lambda *left = calloc(1, sizeof(*left));
+                right = calloc(1, sizeof(*right));
 
                 application->app.left = left;
                 application->app.right = right;
 
-                if (left == NULL || right == NULL) {
+                if (left == NULL || right == NULL || mode.interrupt) {
                         lambda_free(numeral);
                         return NULL;
                 }
