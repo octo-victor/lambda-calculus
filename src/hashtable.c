@@ -72,6 +72,7 @@ Lambda *hashtable_insert(HashTable *table, Lambda *lambda)
 
         if (bucket->value == NULL) {
                 bucket->value = lambda;
+                table->entries_count++;
                 return lambda;
         }
         
@@ -85,7 +86,6 @@ Lambda *hashtable_insert(HashTable *table, Lambda *lambda)
                         node->value = lambda;
                         return lambda;
                 }
-                
                 node = node->next;
         }
         
@@ -100,6 +100,8 @@ Lambda *hashtable_insert(HashTable *table, Lambda *lambda)
         node->next = bucket->next;
 
         bucket->next = node;
+
+        table->entries_count++;
 
         return lambda;
 }
