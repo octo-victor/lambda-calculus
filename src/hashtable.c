@@ -282,8 +282,6 @@ void load_default_shortcuts(HashTable *table)
                 // Pairs
 
                 "PAIR=\\x.\\y.\\f.fxy",
-                "NIL=\\x.(\\f.\\x.f)",
-
                 "FIRST=\\p.p(\\f.\\x.f)",
                 "SECOND=\\p.p(\\f.\\x.x)",
 
