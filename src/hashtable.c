@@ -72,21 +72,34 @@ Lambda *hashtable_insert(HashTable *table, Lambda *lambda)
 
         if (bucket->value == NULL) {
                 bucket->value = lambda;
-                table->entries_count++;
                 return lambda;
         }
         
-        Node *node = malloc(sizeof(*node));
+        Node *node = bucket;
 
-        if (node == NULL)
+        while (node != NULL) {
+                const char *node_entry = node->value->ent.entry;
+
+                if (strcmp(entry, node_entry) == 0) {
+                        lambda_free(node->value);
+                        node->value = lambda;
+                        return lambda;
+                }
+                
+                node = node->next;
+        }
+        
+        node = malloc(sizeof(*node));
+
+        if (node == NULL) {
+                lambda_free(lambda);
                 return NULL;
+        }
 
         node->value = lambda;
         node->next = bucket->next;
 
         bucket->next = node;
-
-        table->entries_count++;
 
         return lambda;
 }
