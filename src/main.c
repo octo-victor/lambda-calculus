@@ -32,7 +32,7 @@ struct Mode mode = {
         .reduce = false,
         .strat = STRAT_NORMAL,
         .verbose = false,
-        .limit = 1000,
+        .max_steps = 1000,
         .simple_print = true
 };
 

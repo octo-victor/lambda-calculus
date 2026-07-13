@@ -17,7 +17,7 @@
 
 static Lambda *get_redex(Lambda *lambda);
 static Lambda *get_redex_normal(Lambda *lambda);
-static Lambda *get_redex_eager(Lambda *lambda);
+static Lambda *get_redex_applicative(Lambda *lambda);
 
 static void beta_reduction(Lambda *redex);
 
@@ -41,7 +41,7 @@ struct ReductionData lambda_reduce(Lambda *lambda)
         unsigned int i;
         bool normal_form = false;
 
-        for (i = 0; i < mode.limit; i++) {
+        for (i = 0; mode.max_steps == INFTY || i < mode.max_steps; i++) {
                 Lambda *redex = get_redex(lambda);
 
                 if (redex == NULL) {
@@ -54,7 +54,7 @@ struct ReductionData lambda_reduce(Lambda *lambda)
                         lambda_print(NULL, lambda, redex, false);
                         printf("\n");
                 } else if ((i + 1) % LONG_CYCLE == 0) {
-                        printf("%d/%d\n", i+1, mode.limit);
+                        printf("%d/%d\n", i+1, mode.max_steps);
                 }
 
                 bool rename = alpha_rename(redex);
@@ -195,8 +195,8 @@ Lambda *get_redex(Lambda *lambda)
                 return get_redex_normal(lambda);
                 break;
         
-        case STRAT_EAGER:
-                return get_redex_eager(lambda);
+        case STRAT_APPLICATIVE:
+                return get_redex_applicative(lambda);
                 break;
         }
 
@@ -266,7 +266,7 @@ Lambda *get_redex_normal(Lambda *lambda)
         return NULL;
 }
 
-Lambda *get_redex_eager(Lambda *lambda)
+Lambda *get_redex_applicative(Lambda *lambda)
 {
         if (lambda == NULL)
                 return NULL;

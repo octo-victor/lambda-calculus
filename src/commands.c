@@ -8,25 +8,26 @@
 #include "commands.h"
 
 static void command_remove(HashTable *table);
-static void set_limit();
+static void max_steps();
 
 const char *help_message =
 
 "Lambda Calculus (λ-calculus) abstraction and application interpreter.\n"
 "Made by victorsavas at "
-             ANSI_BLUE "https://github.com/octo-victor/lambda-calculus.\n"
-ANSI_RESET "\n"
+             ANSI_BLUE "https://github.com/octo-victor/lambda-calculus"
+                                                          ANSI_RESET ".\n"
+"\n"
 "Command list:\n"
+"  :applicative                         Enables reduction with applicative strategy (innermost-leftmost)\n"
 "  :clear                               Clears the screen\n"
-"  :eager                               Enables reduction with eager strategy (innermost-leftmost)\n"
 "  :entries                             Prints out all the shortcuts stored\n"
 "  :exit                                Terminates the program\n"
 "  :help                                Prints this message\n"
+"  :maxsteps <steps>                    Sets reduction limit\n"
 "  :noreduction                         Disables reduction (on by default)\n"
 "  :normal                              Enables reduction with normal strategy (outmost-leftmost)\n"
 "  :noverbose                           Disables step-by-step printing\n"
 "  :remove <entry>                      Deletes one entry from the hashtable\n"
-"  :setlimit <limit>                    Sets reduction limit\n"
 "  :simple                              Simplifies output printing\n"
 "  :sparse                              Prints the full syntax of the output\n"
 "  :verbose                             Prints reduction steps\n"
@@ -80,13 +81,13 @@ void parse_command(char *str, HashTable *table)
         } else if (strcmp(token, ":normal") == 0) {
                 mode.reduce = true;
                 mode.strat = STRAT_NORMAL;
-                if (mode.limit == 0)
-                        mode.limit = 1000;
-        } else if (strcmp(token, ":eager") == 0) {
+                if (mode.max_steps == 0)
+                        mode.max_steps = 1000;
+        } else if (strcmp(token, ":applicative") == 0) {
                 mode.reduce = true;
-                mode.strat = STRAT_EAGER;
-                if (mode.limit == 0)
-                        mode.limit = 1000;
+                mode.strat = STRAT_APPLICATIVE;
+                if (mode.max_steps == 0)
+                        mode.max_steps = 1000;
         }
         else if (strcmp(token, ":noreduction") == 0) {
                 mode.reduce = false;
@@ -94,8 +95,8 @@ void parse_command(char *str, HashTable *table)
                 mode.verbose = true;
         } else if (strcmp(token, ":noverbose") == 0) {
                 mode.verbose = false;
-        } else if (strcmp(token, ":setlimit") == 0) {
-                set_limit();
+        } else if (strcmp(token, ":maxsteps") == 0) {
+                max_steps();
         } else if (strcmp(token, ":clear") == 0) {
                 printf(ANSI_CLEAR);
         } else if (strcmp(token, ":simple") == 0) {
@@ -130,16 +131,37 @@ void command_remove(HashTable *table)
                 printf("No \"%s\" entry found.\n", token);
 }
 
-void set_limit()
+void max_steps()
 {
         char *token = strtok(NULL, space);
 
-        if (token == NULL || !isdigit(token[0])) {
+        if (token == NULL) {
                 printf(
                         ANSI_RED
-                        "Syntax error. Expected positive integer.\n"
+                        "Syntax error. Expected argument <steps> (integer or \"none\").\n"
                         ANSI_RESET
-                        ":setlimit <limit>\n"
+                        ":maxsteps <steps>\n"
+                );
+                return;
+        }
+
+        if (strcmp(token, "none") == 0) {
+                printf(
+                        "Warning: some expressions may never terminate, even on normal mode.\n"
+                        "Press CTRL+C to abort reduction.\n"
+                );
+
+                mode.max_steps = INFTY;
+
+                return;
+        }
+
+        if (!isdigit(token[0])) {
+                printf(
+                        ANSI_RED
+                        "Syntax error. Argument <steps> must be integer or \"none\".\n"
+                        ANSI_RESET
+                        ":maxsteps <steps>\n"
                 );
                 return;
         }
@@ -148,11 +170,11 @@ void set_limit()
 
         if (limit == 0) {
                 mode.reduce = false;
-                mode.limit = limit;
+                mode.max_steps = limit;
 
                 return;
         }
 
         mode.reduce = true;
-        mode.limit = limit;
+        mode.max_steps = limit;
 }

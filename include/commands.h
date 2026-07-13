@@ -2,9 +2,11 @@
 
 #include "hashtable.h"
 
+#define INFTY -1
+
 typedef enum RedStrategy {
         STRAT_NORMAL,
-        STRAT_EAGER
+        STRAT_APPLICATIVE
 } RedStrategy;
 
 struct Mode {
@@ -12,7 +14,7 @@ struct Mode {
         bool interrupt;
         bool reduce;
         bool verbose;
-        int limit;
+        int max_steps;
         RedStrategy strat;
         bool simple_print;
 };
