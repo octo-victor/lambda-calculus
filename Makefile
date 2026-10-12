@@ -1,6 +1,8 @@
 PROJECT_NAME = lambda-calculus
 CC = gcc
 
+CFLAGS += -Wall -Wextra
+
 ifeq ($(BUILD_MODE), DEBUG)
 	ifeq ($(ASAN), 1)
 	 	CFLAGS += -fsanitize=address -g -fno-omit-frame-pointer -O0

@@ -48,11 +48,14 @@ int main()
         while (!mode.exit) {
                 printf("λ> ");
 
-                fgets(buffer, BUF_LEN, stdin);
+                char *code = fgets(buffer, BUF_LEN, stdin);
 
-                if (mode.interrupt)
+                if (mode.interrupt || code == NULL)
                         break;
                 
+                if (buffer[0] < 32)
+                        continue;
+
                 if (buffer[0] == ':') {
                         parse_command(buffer, table);
                         continue;
